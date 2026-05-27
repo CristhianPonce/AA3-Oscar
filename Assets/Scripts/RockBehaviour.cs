@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -6,8 +7,8 @@ public class RockBehavior : MonoBehaviour
 {
     [Header("Configuración de Caída")]
     [SerializeField] private LayerMask groundLayer; // Capa del Tilemap de tierra
-    [SerializeField] private float fallSpeed = 8f;
-    [SerializeField] private float delayBeforeFall = 0.8f;
+    [SerializeField] private float fallSpeed = 6f;
+    [SerializeField] private float delayBeforeFall = 1.5f;
 
     private Rigidbody2D rb;
     private bool isFalling = false;
@@ -32,8 +33,15 @@ public class RockBehavior : MonoBehaviour
         RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 0.6f, groundLayer);
 
         // Si no hay tierra debajo, la roca empieza a activarse
-        if (hit.collider == null)
+        if (hit.collider != null)
         {
+            // 2. Si ha tocado algo, comprobamos si ese algo es el suelo
+            if (!hit.collider.CompareTag("Ground"))
+                StartCoroutine(TriggerFallRoutine());
+        }
+        else
+        {
+            Debug.Log("DAMN: NOOOO estoy tocando el suelo, me quedo quieto.");
             StartCoroutine(TriggerFallRoutine());
         }
     }
@@ -47,7 +55,7 @@ public class RockBehavior : MonoBehaviour
         Vector3 originalPos = transform.position;
         while (elapsed < delayBeforeFall)
         {
-            transform.position = originalPos + (Vector3)Random.insideUnitCircle * 0.05f;
+            transform.position = originalPos + (Vector3)UnityEngine.Random.insideUnitCircle * 0.05f;
             elapsed += Time.deltaTime;
             yield return null;
         }
@@ -78,7 +86,8 @@ public class RockBehavior : MonoBehaviour
         }
 
         // Si aplasta al jugador o a un enemigo
-        if (collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("Player"))
+        if (//collision.gameObject.CompareTag("Enemy")
+            collision.gameObject.CompareTag("Player"))
         {
             // Aquí puedes llamar al método de daño/muerte del objetivo
             Destroy(collision.gameObject);
@@ -87,12 +96,13 @@ public class RockBehavior : MonoBehaviour
 
     private void StopFalling()
     {
+        Debug.Log("NIGAA0");
         isFalling = false;
         isTriggered = false;
         FreezeRock();
 
         // Opcional: En Dig Dug las rocas se rompen tras caer para no bloquear el mapa para siempre
-        Destroy(gameObject, 0.2f);
+        Destroy(gameObject, 0.5f);
     }
 
     private void FreezeRock()

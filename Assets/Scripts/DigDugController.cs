@@ -7,16 +7,16 @@ public class DigDugController : MonoBehaviour
 {
     [Header("Configuración de Movimiento")]
     [SerializeField] private float moveSpeed = 2f;
-
     [SerializeField] private Tilemap groundTilemap;
-    [SerializeField] private Tilemap tunnelTilemap;
+    // NUEVO: Capa de los obstáculos indestructibles
+    [SerializeField] private LayerMask hardGroundLayer;
 
     [Header("Configuración del Arpón")]
     [SerializeField] private float attackRange = 4f;
     [SerializeField] private LayerMask enemyLayer;
-    [SerializeField] private LineRenderer lineRenderer; // Asigna un LineRenderer en el Inspector
+    [SerializeField] private LineRenderer lineRenderer;
 
-    private Vector2 moveDirection = Vector2.right; // Guarda la última dirección al mirar
+    private Vector2 moveDirection = Vector2.right;
     private Vector2 currentInputDirection;
     private Rigidbody2D rb;
     private Vector2 targetPosition;
@@ -45,7 +45,6 @@ public class DigDugController : MonoBehaviour
 
             if (Keyboard.current != null)
             {
-                // Disparo / Inflar con Barra Espaciadora
                 if (Keyboard.current.spaceKey.wasPressedThisFrame)
                 {
                     ShootHarpoon();
@@ -68,9 +67,21 @@ public class DigDugController : MonoBehaviour
 
             if (currentInputDirection != Vector2.zero)
             {
-                moveDirection = currentInputDirection; // Actualizar dirección de mirada
-                targetPosition = (Vector2)transform.position + moveDirection;
-                isMoving = true;
+                moveDirection = currentInputDirection.normalized;
+                Vector2 potentialTarget = (Vector2)transform.position + currentInputDirection;
+
+                if (CanMove(potentialTarget))
+                {
+                    targetPosition = potentialTarget;
+                    isMoving = true; // Solo se bloquea el teclado si el movimiento es VÁLIDO
+                }
+                else
+                {
+                    // CORRECCIÓN: Si el camino está bloqueado, cancelamos la dirección
+                    // y dejamos 'isMoving' en false para que el teclado siga activo el próximo frame
+                    currentInputDirection = Vector2.zero;
+                    isMoving = false;
+                }
             }
         }
     }
@@ -79,9 +90,9 @@ public class DigDugController : MonoBehaviour
     {
         if (isMoving && !isAttacking)
         {
+            TryDig();
             Vector2 newPos = Vector2.MoveTowards(rb.position, targetPosition, moveSpeed * Time.fixedDeltaTime);
             rb.MovePosition(newPos);
-            TryDig();
 
             if (Vector2.Distance(rb.position, targetPosition) < 0.05f)
             {
@@ -89,6 +100,16 @@ public class DigDugController : MonoBehaviour
                 isMoving = false;
             }
         }
+    }
+
+    // NUEVA FUNCIÓN: Comprueba si hay HardGround en la posición de destino
+    private bool CanMove(Vector2 targetPos)
+    {
+        // Comprobamos si hay algún collider de la capa HardGround en el punto exacto de destino
+        Collider2D hit = Physics2D.OverlapPoint(targetPos, hardGroundLayer);
+
+        // Si hit es null, significa que el camino está despejado
+        return hit == null;
     }
 
     void TryDig()
@@ -102,7 +123,6 @@ public class DigDugController : MonoBehaviour
     {
         isAttacking = true;
 
-        // Lanzar Raycast para detectar enemigos
         RaycastHit2D hit = Physics2D.Raycast(transform.position, moveDirection, attackRange, enemyLayer);
 
         if (lineRenderer)
@@ -122,7 +142,7 @@ public class DigDugController : MonoBehaviour
             }
         }
 
-        Invoke(nameof(ResetAttack), 0.3f); // El cable desaparece rápido si no se sigue inflando
+        Invoke(nameof(ResetAttack), 0.3f);
     }
 
     void ResetAttack()
@@ -134,7 +154,6 @@ public class DigDugController : MonoBehaviour
         }
         else
         {
-            // Si el jugador deja presionado espacio, re-evaluamos el disparo (para seguir inflando)
             ShootHarpoon();
         }
     }
