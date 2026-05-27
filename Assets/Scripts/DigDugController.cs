@@ -6,8 +6,10 @@ using UnityEngine.InputSystem;
 public class DigDugController : MonoBehaviour
 {
     [Header("Configuración de Movimiento")]
-    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float moveSpeed = 2f;
+
     [SerializeField] private Tilemap groundTilemap;
+    [SerializeField] private Tilemap tunnelTilemap;
 
     [Header("Configuración del Arpón")]
     [SerializeField] private float attackRange = 4f;
@@ -50,13 +52,13 @@ public class DigDugController : MonoBehaviour
                     return;
                 }
 
-                if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) moveX = 1f;
-                else if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) moveX = -1f;
+                if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) moveX = groundTilemap.cellSize.x;
+                else if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) moveX = -groundTilemap.cellSize.x;
 
                 if (moveX == 0)
                 {
-                    if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) moveY = 1f;
-                    else if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) moveY = -1f;
+                    if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) moveY = groundTilemap.cellSize.y;
+                    else if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) moveY = -groundTilemap.cellSize.y;
                 }
             }
 
