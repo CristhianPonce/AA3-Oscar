@@ -84,13 +84,40 @@ public class RockBehavior : MonoBehaviour
         {
             StopFalling();
         }
-
         // Si aplasta al jugador o a un enemigo
         if (//collision.gameObject.CompareTag("Enemy")
             collision.gameObject.CompareTag("Player"))
         {
-            // Aquí puedes llamar al método de daño/muerte del objetivo
-            Destroy(collision.gameObject);
+
+            TryKillPlayer(collision.collider);
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        //if (!isFalling) return;
+
+        //// Si choca con el suelo (Tilemap con collider) u otra roca ya asentada
+        //if (other.gameObject.CompareTag("Ground") || other.gameObject.CompareTag("Rock"))
+        //{
+        //    StopFalling();
+        //}
+        //// Si aplasta al jugador o a un enemigo
+        //if (//collision.gameObject.CompareTag("Enemy")
+        //    other.gameObject.CompareTag("Player"))
+        //{
+
+        //    TryKillPlayer(other.collider);
+        //}
+    }
+
+    private void TryKillPlayer(Collider2D other)
+    {
+        PlayerDeath playerDeath = other.GetComponentInParent<PlayerDeath>();
+
+        if (playerDeath != null)
+        {
+            playerDeath.Die();
         }
     }
 
