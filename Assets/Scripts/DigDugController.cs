@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Tilemaps;
@@ -6,20 +6,24 @@ using UnityEngine.Tilemaps;
 [RequireComponent(typeof(Rigidbody2D))]
 public class DigDugController : MonoBehaviour
 {
-    [Header("Configuraci�n de Movimiento")]
+    [Header("Configuración de Movimiento")]
     [SerializeField] private float moveSpeed = 2f;
     [SerializeField] private Tilemap groundTilemap;
     [SerializeField] private LayerMask hardGroundLayer;
 
-    [Header("Configuraci�n del Arp�n")]
+    [Header("Configuración del Arpón")]
     [SerializeField] private float attackRange = 4f;
     [SerializeField] private float freeHarpoonReturnTime = 0.15f;
     [SerializeField] private LayerMask enemyLayer;
 
-    // Capas que detienen el arp�n: muros, piedras, tierra sin excavar, etc.
+    // Capas que detienen el arpón: muros, piedras, tierra sin excavar, etc.
     [SerializeField] private LayerMask harpoonObstacleLayer;
 
     [SerializeField] private LineRenderer lineRenderer;
+
+    [Header("Configuración de Munición")]
+    [SerializeField] private int maxHarpoons = 5; // Cantidad total de arpones para TODO el nivel
+    public int currentHarpoons;
 
     private Rigidbody2D rb;
 
@@ -42,6 +46,9 @@ public class DigDugController : MonoBehaviour
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         targetPosition = transform.position;
+
+        // Inicializamos la munición disponible al máximo
+        currentHarpoons = maxHarpoons;
 
         if (lineRenderer != null)
         {
@@ -96,15 +103,21 @@ public class DigDugController : MonoBehaviour
             return;
         }
 
-        // Si el arp�n ya est� clavado, cada pulsaci�n infla al enemigo.
+        // Si el arpón ya está clavado, cada pulsación infla al enemigo.
         if (harpoonedEnemy != null)
         {
             harpoonedEnemy.PumpFromHarpoon();
             return;
         }
 
-        // Mientras est� caminando entre casillas o el arp�n est� volviendo,
-        // no puede lanzar uno nuevo.
+        // COMPROBACIÓN CORREGIDA: Si ya no quedan arpones, bloquea el código por completo
+        if (currentHarpoons <= 0)
+        {
+            Debug.Log("¡Sin arpones restantes! Te has quedado sin munición.");
+            return;
+        }
+
+        // Mientras está caminando entre casillas o el arpón está volviendo, no puede lanzar uno nuevo.
         if (isMoving || isAttacking)
         {
             return;
@@ -209,6 +222,10 @@ public class DigDugController : MonoBehaviour
     {
         isAttacking = true;
 
+        // Se resta la munición inmediatamente al disparar
+        currentHarpoons--;
+        Debug.Log($"Arpón lanzado. Arpones restantes: {currentHarpoons}");
+
         int hitMask = enemyLayer.value | harpoonObstacleLayer.value;
 
         RaycastHit2D hit = Physics2D.Raycast(
@@ -236,7 +253,7 @@ public class DigDugController : MonoBehaviour
             }
         }
 
-        // Si no ha impactado contra un enemigo, vuelve autom�ticamente.
+        // Si no ha impactado contra un enemigo, vuelve automáticamente.
         returnHarpoonCoroutine = StartCoroutine(ReturnFreeHarpoon());
     }
 
@@ -298,5 +315,8 @@ public class DigDugController : MonoBehaviour
 
         harpoonedEnemy = null;
         isAttacking = false;
+
+        // CORRECCIÓN: Se ha eliminado la línea que hacía 'currentHarpoons++'
+        // Ahora el arpón se limpia de la pantalla, pero la munición gastada NO se recupera.
     }
 }
