@@ -5,7 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class RockBehavior : MonoBehaviour
 {
-    [Header("Configuración de Caída")]
+    [Header("Configuracin de Cada")]
     [SerializeField] private LayerMask groundLayer; // Capa del Tilemap de tierra
     [SerializeField] private float fallSpeed = 6f;
     [SerializeField] private float delayBeforeFall = 1.5f;
@@ -18,18 +18,18 @@ public class RockBehavior : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
 
-        // Configuración moderna: Aseguramos que sea Dynamic pero congelamos su posición al inicio
+        // Configuracin moderna: Aseguramos que sea Dynamic pero congelamos su posicin al inicio
         rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.gravityScale = 0f; // Evitamos que la gravedad de Unity actúe antes de tiempo
+        rb.gravityScale = 0f; // Evitamos que la gravedad de Unity acte antes de tiempo
         FreezeRock();
     }
 
     void Update()
     {
-        // Si ya está cayendo o esperando para caer, no comprobamos nada más
+        // Si ya est cayendo o esperando para caer, no comprobamos nada ms
         if (isFalling || isTriggered) return;
 
-        // Lanzamos un rayo corto hacia abajo (ajusta el 0.6f según el tamaño de tu sprite)
+        // Lanzamos un rayo corto hacia abajo (ajusta el 0.6f segn el tamao de tu sprite)
         RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 0.6f, groundLayer);
 
         // Si no hay tierra debajo, la roca empieza a activarse
@@ -41,7 +41,7 @@ public class RockBehavior : MonoBehaviour
         }
         else
         {
-            Debug.Log("DAMN: NOOOO estoy tocando el suelo, me quedo quieto.");
+            Debug.Log("[Rock] Sin soporte: la roca empieza a caer.");
             StartCoroutine(TriggerFallRoutine());
         }
     }
@@ -50,7 +50,7 @@ public class RockBehavior : MonoBehaviour
     {
         isTriggered = true;
 
-        // El clásico delay de Dig Dug donde la roca tiembla antes de caer
+        // El clsico delay de Dig Dug donde la roca tiembla antes de caer
         float elapsed = 0f;
         Vector3 originalPos = transform.position;
         while (elapsed < delayBeforeFall)
@@ -59,7 +59,7 @@ public class RockBehavior : MonoBehaviour
             elapsed += Time.deltaTime;
             yield return null;
         }
-        transform.position = originalPos; // Restaurar posición tras el temblor
+        transform.position = originalPos; // Restaurar posicin tras el temblor
 
         // Cambiamos el estado para empezar a caer
         isFalling = true;
@@ -70,7 +70,7 @@ public class RockBehavior : MonoBehaviour
     {
         if (isFalling)
         {
-            // La forma moderna y recomendada para mover cuerpos físicos de forma controlada
+            // La forma moderna y recomendada para mover cuerpos fsicos de forma controlada
             rb.MovePosition(rb.position + Vector2.down * fallSpeed * Time.fixedDeltaTime);
         }
     }
@@ -123,7 +123,7 @@ public class RockBehavior : MonoBehaviour
 
     private void StopFalling()
     {
-        Debug.Log("NIGAA0");
+        Debug.Log("[Rock] La roca ha dejado de caer.");
         isFalling = false;
         isTriggered = false;
         FreezeRock();
@@ -134,13 +134,13 @@ public class RockBehavior : MonoBehaviour
 
     private void FreezeRock()
     {
-        // Congelamos tanto el movimiento como la rotación para que no se deslice por físicas
+        // Congelamos tanto el movimiento como la rotacin para que no se deslice por fsicas
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
     }
 
     private void UnfreezeRock()
     {
-        // Al caer, solo permitimos el movimiento en el eje Y y congelamos la rotación
+        // Al caer, solo permitimos el movimiento en el eje Y y congelamos la rotacin
         rb.constraints = RigidbodyConstraints2D.FreezePositionX | RigidbodyConstraints2D.FreezeRotation;
     }
 }

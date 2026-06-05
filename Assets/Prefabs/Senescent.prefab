@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 7829389870547706816}
   - component: {fileID: 1146823927880122346}
   - component: {fileID: 1829922779907327581}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Senescent
   m_TagString: Untagged
   m_Icon: {fileID: 0}

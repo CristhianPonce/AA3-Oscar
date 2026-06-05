@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 3730128569590418257}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -82,7 +82,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -5047158112964758642, guid: 5867853c1684ce746890f8bf5e174d55, type: 3}
+  m_Sprite: {fileID: 4972049653483656280, guid: 7a65c8fee7d17744ebe33e5aed9ee8c4, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -107,12 +107,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DigDugController
   moveSpeed: 5
   groundTilemap: {fileID: 0}
-  tunnelTilemap: {fileID: 0}
+  hardGroundLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  turnHoldTimeBeforeMove: 0.12
+  idleUpSprite: {fileID: -5578140427960762022, guid: 8641690b7fe7fe94f91b6b82bac253a1, type: 3}
+  idleDownSprite: {fileID: 4972049653483656280, guid: 7a65c8fee7d17744ebe33e5aed9ee8c4, type: 3}
+  idleLeftSprite: {fileID: -6439108108750414117, guid: 82192889fc5f59d4a9e4e55db36a51d2, type: 3}
+  idleRightSprite: {fileID: -335340504442192425, guid: 6007184e4c44eba4fb14110df88731db, type: 3}
   attackRange: 4
+  freeHarpoonReturnTime: 0.15
   enemyLayer:
     serializedVersion: 2
     m_Bits: 0
+  harpoonObstacleLayer:
+    serializedVersion: 2
+    m_Bits: 0
   lineRenderer: {fileID: 0}
+  harpoonHitRadius: 0.18
+  harpoonOrigin: {fileID: 0}
+  maxHarpoons: 20
+  currentHarpoons: 0
+
 --- !u!50 &4407088174415016025
 Rigidbody2D:
   serializedVersion: 5

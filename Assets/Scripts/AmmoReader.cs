@@ -1,17 +1,42 @@
 using TMPro;
 using UnityEngine;
 
+[RequireComponent(typeof(TextMeshProUGUI))]
 public class AmmoReader : MonoBehaviour
 {
-    TextMeshProUGUI ammoText;
-    void Start()
+    private TextMeshProUGUI ammoText;
+    private DigDugController player;
+
+    private void Awake()
     {
         ammoText = GetComponent<TextMeshProUGUI>();
     }
 
-    void Update()
+    private void Update()
     {
-        DigDugController player = Object.FindFirstObjectByType<DigDugController>();
-        ammoText.text = player.currentHarpoons.ToString();
+        if (player == null)
+        {
+            player = FindFirstObjectByType<DigDugController>();
+        }
+
+        TumorGameManager manager = TumorGameManager.Instance;
+
+        if (player == null)
+        {
+            ammoText.text = "LINFO no encontrado";
+            return;
+        }
+
+        if (manager == null)
+        {
+            ammoText.text = $"Aguijones: {player.currentHarpoons}";
+            return;
+        }
+
+        ammoText.text =
+            $"Aguijones: {player.currentHarpoons}\n" +
+            $"Senescentes: {manager.SenescentCount}\n" +
+            $"Dormentes: {manager.DormantCount}\n" +
+            $"Despiertas: {manager.AwakeCount}/{manager.MaxAwakeCellsBeforeDefeat}";
     }
 }
