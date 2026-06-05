@@ -84,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -1247211544231895063, guid: 9cd6475976787c7479809c987bfa67c1, type: 3}
+  m_Sprite: {fileID: -6976266208964422083, guid: 75d0c81a20cfe374c8ae6e33acb9e1d4, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -132,7 +132,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 4.68, y: 4.48}
+    oldSize: {x: 2.41, y: 2.41}
     newSize: {x: 4.68, y: 4.48}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -176,12 +176,23 @@ MonoBehaviour:
   m_GameObject: {fileID: 6546704626581568188}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0f9c4dd38e0e7694fb7541bec836cda6, type: 3}
+  m_Script: {fileID: 11500000, guid: 0f237d8670e04586b1d585565e31ecbc, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyPooka
-  normalSpeed: 2
-  ghostSpeed: 1
-  ghostModeDuration: 5
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 0
+  m_EditorClassIdentifier: Assembly-CSharp::TumorCell
+  initialState: 1
+  canBeDestroyedByLinfo: 1
+  signalInterval: 8
+  signalRange: 5
+  divisionDelayAfterWake: 6
+  divisionInterval: 10
+  playerContactGraceTime: 1.75
+  senescentSprite: {fileID: -6976266208964422083, guid: 75d0c81a20cfe374c8ae6e33acb9e1d4, type: 3}
+  dormantSprite: {fileID: 5121196570632611261, guid: 030c1f54db3e61748836feac1823a0d0, type: 3}
+  awakeSprite: {fileID: 6556009183422778050, guid: 0899b9edb798a084d981bb5685e6afdb, type: 3}
+  senescentColor: {r: 1, g: 1, b: 1, a: 1}
+  dormantColor: {r: 0.62, g: 0.5, b: 0.66, a: 0.8}
+  awakeColor: {r: 1, g: 1, b: 1, a: 1}
+  destroyedColor: {r: 1, g: 1, b: 1, a: 0}
+  camouflageDormantCells: 1
+  dormantCamouflageAlpha: 0.42
+  dormantCamouflageTint: {r: 0.55, g: 0.48, b: 0.58, a: 1}

@@ -9,21 +9,32 @@ public class TumorCell : MonoBehaviour
     [SerializeField] private bool canBeDestroyedByLinfo = true;
 
     [Header("Señales senescentes")]
-    [SerializeField] private float signalInterval = 4f;
-    [SerializeField] private int signalRange = 6;
+    [SerializeField] private float signalInterval = 8f;
+    [SerializeField] private int signalRange = 5;
 
     [Header("Multiplicación de despiertas")]
-    [SerializeField] private float divisionDelayAfterWake = 2f;
-    [SerializeField] private float divisionInterval = 5f;
+    [SerializeField] private float divisionDelayAfterWake = 6f;
+    [SerializeField] private float divisionInterval = 10f;
 
     [Header("Contacto con LINFO")]
-    [SerializeField] private float playerContactGraceTime = 0.35f;
+    [Tooltip("Tiempo de margen tras despertar una dormente. Durante este margen no daña aunque LINFO siga encima.")]
+    [SerializeField] private float playerContactGraceTime = 1.75f;
 
     [Header("Aspecto")]
-    [SerializeField] private Color senescentColor = new Color(1f, 0.8f, 0.2f, 1f);
-    [SerializeField] private Color dormantColor = new Color(0.35f, 0.45f, 1f, 0.85f);
-    [SerializeField] private Color awakeColor = new Color(1f, 0.15f, 0.2f, 1f);
-    [SerializeField] private Color destroyedColor = new Color(0.15f, 0.15f, 0.15f, 0f);
+    [SerializeField] private Sprite senescentSprite;
+    [SerializeField] private Sprite dormantSprite;
+    [SerializeField] private Sprite awakeSprite;
+    [SerializeField] private Color senescentColor = Color.white;
+    [SerializeField] private Color dormantColor = new Color(0.62f, 0.50f, 0.66f, 0.8f);
+    [SerializeField] private Color awakeColor = Color.white;
+    [SerializeField] private Color destroyedColor = new Color(1f, 1f, 1f, 0f);
+
+    [Header("Camuflaje dormente")]
+    [Tooltip("Hace que las durmientes se vean más apagadas/camufladas mientras no han despertado.")]
+    [SerializeField] private bool camouflageDormantCells = true;
+    [Range(0.05f, 1f)]
+    [SerializeField] private float dormantCamouflageAlpha = 0.42f;
+    [SerializeField] private Color dormantCamouflageTint = new Color(0.55f, 0.48f, 0.58f, 1f);
 
     private TumorCellState currentState;
     private TumorGameManager manager;
@@ -72,9 +83,24 @@ public class TumorCell : MonoBehaviour
         }
     }
 
+    private void OnValidate()
+    {
+        if (spriteRenderer == null)
+        {
+            spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        }
+
+        if (!Application.isPlaying)
+        {
+            currentState = initialState;
+        }
+
+        ApplyVisualState();
+    }
+
     private void OnDestroy()
     {
-        if (manager != null)
+        if (manager != null && !manager.IsShuttingDown)
         {
             manager.UnregisterCell(this);
         }
@@ -124,7 +150,8 @@ public class TumorCell : MonoBehaviour
 
         currentState = TumorCellState.Awake;
         lastWakeTime = Time.time;
-        Debug.Log($"[Tumor] Célula dormente despertada: {reason}");
+        Debug.Log($"[Tumor] Célula dormente despertada: {reason}. LINFO tiene margen para apartarse.");
+        manager?.NotifyDormantCellAwakened(this, reason);
 
         ApplyVisualState();
         RestartBehaviourRoutine();
@@ -156,6 +183,11 @@ public class TumorCell : MonoBehaviour
             behaviourRoutine = null;
         }
 
+        if (killedByLinfo)
+        {
+            LinfoSoundPlayer.Play("Cell_destroy_pop", 0.9f);
+        }
+
         manager?.NotifyCellDestroyed(this, killedByLinfo);
 
         if (spriteRenderer != null)
@@ -178,6 +210,11 @@ public class TumorCell : MonoBehaviour
             manager = TumorGameManager.Instance != null
                 ? TumorGameManager.Instance
                 : TumorGameManager.CreateRuntimeManager();
+        }
+
+        if (manager == null || manager.IsShuttingDown)
+        {
+            return;
         }
 
         RefreshGridPosition();
@@ -256,21 +293,48 @@ public class TumorCell : MonoBehaviour
             return;
         }
 
+        Sprite targetSprite = null;
+        Color targetColor = Color.white;
+
         switch (currentState)
         {
             case TumorCellState.Senescent:
-                spriteRenderer.color = senescentColor;
+                targetSprite = senescentSprite;
+                targetColor = senescentColor;
                 break;
+
             case TumorCellState.Dormant:
-                spriteRenderer.color = dormantColor;
+                targetSprite = dormantSprite;
+                targetColor = dormantColor;
+
+                if (camouflageDormantCells)
+                {
+                    targetColor = new Color(
+                        targetColor.r * dormantCamouflageTint.r,
+                        targetColor.g * dormantCamouflageTint.g,
+                        targetColor.b * dormantCamouflageTint.b,
+                        targetColor.a * dormantCamouflageAlpha
+                    );
+                }
                 break;
+
             case TumorCellState.Awake:
-                spriteRenderer.color = awakeColor;
+                targetSprite = awakeSprite;
+                targetColor = awakeColor;
                 break;
+
             default:
-                spriteRenderer.color = Color.white;
+                targetSprite = senescentSprite != null ? senescentSprite : spriteRenderer.sprite;
+                targetColor = Color.white;
                 break;
         }
+
+        if (targetSprite != null)
+        {
+            spriteRenderer.sprite = targetSprite;
+        }
+
+        spriteRenderer.color = targetColor;
     }
 
     private void OnTriggerEnter2D(Collider2D other)

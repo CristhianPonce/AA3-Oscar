@@ -11,6 +11,28 @@ public class DigDugController : MonoBehaviour
     [SerializeField] private Tilemap groundTilemap;
     [SerializeField] private LayerMask hardGroundLayer;
 
+    [Header("Anclaje visual y colisión de LINFO")]
+    [Tooltip("Mantiene la lógica de movimiento en el centro del tile y evita que el sprite/collider se desplacen al cambiar de sprite.")]
+    [SerializeField] private bool normalizePlayerColliderOnStart = true;
+
+    [Tooltip("Tamaño LOCAL del collider físico. Reducido para que LINFO no choque con células al pasar cerca. Con escala 0.5 equivale aprox. a 0.375x0.375 unidades de mundo.")]
+    [SerializeField] private Vector2 playerCollisionSize = new Vector2(0.75f, 0.75f);
+
+    [Tooltip("Offset LOCAL del collider. Debe quedarse en 0 para que el centro lógico de movimiento coincida con el centro del sprite.")]
+    [SerializeField] private Vector2 playerCollisionOffset = Vector2.zero;
+
+    [Tooltip("Altura visual opcional para ajustar el sprite sin tocar el collider ni romper el movimiento.")]
+    [SerializeField] private float visualYOffset = 0f;
+
+    [Tooltip("Desactiva colliders extra añadidos en escena por error. LINFO debe tener un único BoxCollider2D principal.")]
+    [SerializeField] private bool disableExtraPlayerColliders = true;
+
+    [Tooltip("Si está activo, el sprite visual se mantiene centrado en el objeto lógico cada frame.")]
+    [SerializeField] private bool keepVisualCentered = true;
+
+    [Tooltip("Escala recomendada para sprites grandes de LINFO. Déjalo en 0 para no forzar escala.")]
+    [SerializeField] private float recommendedRootScale = 0.5f;
+
     [Tooltip("Tiempo que hay que mantener una dirección nueva antes de empezar a caminar. Permite pulsar una vez para solo girar, estilo Pokémon.")]
     [SerializeField] private float turnHoldTimeBeforeMove = 0.12f;
 
@@ -38,7 +60,16 @@ public class DigDugController : MonoBehaviour
 
     [Header("Configuración de Munición")]
     [SerializeField] private int maxHarpoons = 20;
+    [SerializeField] private bool regenerateHarpoonsPassively = true;
+    [SerializeField] private float passiveHarpoonRegenInterval = 3.5f;
+    [SerializeField] private int passiveHarpoonRegenAmount = 1;
     public int currentHarpoons;
+
+    [Header("Audio")]
+    [SerializeField] private float hoverVolume = 0.08f;
+    [SerializeField] private float moveVolume = 0.12f;
+    [SerializeField] private float digVolume = 0.16f;
+    [SerializeField] private float harpoonVolume = 0.25f;
 
     private Rigidbody2D rb;
     private Vector2 moveDirection = Vector2.down;
@@ -50,6 +81,10 @@ public class DigDugController : MonoBehaviour
     private Coroutine returnHarpoonCoroutine;
     private Collider2D playerCollider;
     private SpriteRenderer playerSpriteRenderer;
+    private AudioSource hoverAudioSource;
+    private float controlLockedUntil;
+    private bool inputLockedExternally;
+    private float passiveHarpoonRegenTimer;
 
     private bool waitingForHoldAfterTurn;
     private Vector2 pendingTurnDirection;
@@ -67,6 +102,7 @@ public class DigDugController : MonoBehaviour
         FindReferencesIfMissing();
         playerCollider = GetComponent<Collider2D>();
         playerSpriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        NormalizePlayerSetup();
     }
 
     private void Start()
@@ -78,6 +114,7 @@ public class DigDugController : MonoBehaviour
 
         targetPosition = transform.position;
         currentHarpoons = maxHarpoons;
+        passiveHarpoonRegenTimer = 0f;
 
         if (lineRenderer != null)
         {
@@ -86,12 +123,21 @@ public class DigDugController : MonoBehaviour
             lineRenderer.enabled = false;
         }
 
+        SetupHoverLoop();
         ApplyIdleSpriteForDirection(moveDirection);
         TryDigAt(transform.position);
     }
 
     private void Update()
     {
+        HandlePassiveHarpoonRegeneration();
+
+        if (inputLockedExternally || Time.time < controlLockedUntil)
+        {
+            CancelCurrentMovementAndAttack(false);
+            return;
+        }
+
         if (LinfoCameraController.IsMapViewActive)
         {
             FreezeMovementForMapView();
@@ -106,10 +152,18 @@ public class DigDugController : MonoBehaviour
         {
             HandleMovementInput();
         }
+
+        KeepVisualAnchorIfNeeded();
     }
 
     private void FixedUpdate()
     {
+        if (inputLockedExternally || Time.time < controlLockedUntil)
+        {
+            CancelCurrentMovementAndAttack(false);
+            return;
+        }
+
         if (LinfoCameraController.IsMapViewActive)
         {
             FreezeMovementForMapView();
@@ -131,6 +185,87 @@ public class DigDugController : MonoBehaviour
             rb.position = targetPosition;
             isMoving = false;
         }
+
+        KeepVisualAnchorIfNeeded();
+    }
+
+    private void NormalizePlayerSetup()
+    {
+        if (recommendedRootScale > 0f)
+        {
+            transform.localScale = new Vector3(recommendedRootScale, recommendedRootScale, transform.localScale.z == 0f ? recommendedRootScale : recommendedRootScale);
+        }
+
+        if (disableExtraPlayerColliders)
+        {
+            BoxCollider2D[] boxColliders = GetComponents<BoxCollider2D>();
+            if (boxColliders.Length > 1)
+            {
+                for (int i = 1; i < boxColliders.Length; i++)
+                {
+                    boxColliders[i].enabled = false;
+                }
+            }
+        }
+
+        if (normalizePlayerColliderOnStart)
+        {
+            BoxCollider2D boxCollider = GetComponent<BoxCollider2D>();
+            if (boxCollider == null)
+            {
+                boxCollider = gameObject.AddComponent<BoxCollider2D>();
+            }
+
+            boxCollider.isTrigger = false;
+            boxCollider.offset = playerCollisionOffset;
+            boxCollider.size = playerCollisionSize;
+            playerCollider = boxCollider;
+        }
+
+        KeepVisualAnchorIfNeeded();
+    }
+
+    private void KeepVisualAnchorIfNeeded()
+    {
+        if (!keepVisualCentered || playerSpriteRenderer == null)
+        {
+            return;
+        }
+
+        Transform visualTransform = playerSpriteRenderer.transform;
+        if (visualTransform != transform)
+        {
+            visualTransform.localPosition = new Vector3(0f, visualYOffset, visualTransform.localPosition.z);
+        }
+    }
+
+
+    private void HandlePassiveHarpoonRegeneration()
+    {
+        if (!regenerateHarpoonsPassively || maxHarpoons <= 0 || currentHarpoons >= maxHarpoons)
+        {
+            passiveHarpoonRegenTimer = 0f;
+            return;
+        }
+
+        if (passiveHarpoonRegenInterval <= 0f)
+        {
+            currentHarpoons = Mathf.Min(maxHarpoons, currentHarpoons + Mathf.Max(1, passiveHarpoonRegenAmount));
+            return;
+        }
+
+        passiveHarpoonRegenTimer += Time.deltaTime;
+
+        if (passiveHarpoonRegenTimer < passiveHarpoonRegenInterval)
+        {
+            return;
+        }
+
+        int ticks = Mathf.FloorToInt(passiveHarpoonRegenTimer / passiveHarpoonRegenInterval);
+        passiveHarpoonRegenTimer -= ticks * passiveHarpoonRegenInterval;
+
+        int amount = Mathf.Max(1, passiveHarpoonRegenAmount) * ticks;
+        currentHarpoons = Mathf.Min(maxHarpoons, currentHarpoons + amount);
     }
 
     private void HandleHarpoonInput()
@@ -262,6 +397,7 @@ public class DigDugController : MonoBehaviour
         {
             targetPosition = potentialTarget;
             isMoving = true;
+            LinfoSoundPlayer.Play("LINFO_move_whoosh", moveVolume);
         }
         else
         {
@@ -302,6 +438,7 @@ public class DigDugController : MonoBehaviour
         if (selectedSprite != null)
         {
             playerSpriteRenderer.sprite = selectedSprite;
+            KeepVisualAnchorIfNeeded();
         }
     }
 
@@ -355,6 +492,7 @@ public class DigDugController : MonoBehaviour
         if (groundTilemap.HasTile(tilePosition))
         {
             groundTilemap.SetTile(tilePosition, null);
+            LinfoSoundPlayer.Play("Tumor_tissue_break", digVolume);
             TumorGameManager.Instance?.OnInnocentCellDug(tilePosition);
         }
     }
@@ -363,6 +501,7 @@ public class DigDugController : MonoBehaviour
     {
         isAttacking = true;
         currentHarpoons--;
+        LinfoSoundPlayer.Play("LINFO_hook_shoot", harpoonVolume);
 
         Vector2 origin = GetHarpoonOrigin();
         Vector2 direction = moveDirection.normalized;
@@ -482,6 +621,90 @@ public class DigDugController : MonoBehaviour
         lineRenderer.SetPosition(1, harpoonedEnemy.transform.position);
     }
 
+
+    public void PrepareForDamageRespawn()
+    {
+        inputLockedExternally = true;
+        CancelCurrentMovementAndAttack(true);
+    }
+
+    public void SetExternalInputLock(bool locked)
+    {
+        inputLockedExternally = locked;
+
+        if (locked)
+        {
+            CancelCurrentMovementAndAttack(true);
+        }
+    }
+
+    public void ResetMovementAfterRespawn()
+    {
+        if (rb == null)
+        {
+            rb = GetComponent<Rigidbody2D>();
+        }
+
+        inputLockedExternally = false;
+        controlLockedUntil = Time.time + 0.08f;
+
+        CancelCurrentMovementAndAttack(true);
+
+        Vector2 respawnPosition = transform.position;
+        targetPosition = respawnPosition;
+
+        if (rb != null)
+        {
+            rb.simulated = true;
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.gravityScale = 0f;
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            rb.position = respawnPosition;
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+        }
+
+        if (!enabled)
+        {
+            enabled = true;
+        }
+
+        LinfoCameraController.ForceDisableMapView();
+        ApplyIdleSpriteForDirection(moveDirection == Vector2.zero ? Vector2.down : moveDirection);
+        KeepVisualAnchorIfNeeded();
+    }
+
+    private void CancelCurrentMovementAndAttack(bool hideHarpoonLine)
+    {
+        if (returnHarpoonCoroutine != null)
+        {
+            StopCoroutine(returnHarpoonCoroutine);
+            returnHarpoonCoroutine = null;
+        }
+
+        harpoonedEnemy = null;
+        isMoving = false;
+        isAttacking = false;
+        waitingForHoldAfterTurn = false;
+        pendingTurnDirection = Vector2.zero;
+        pendingTurnHoldTimer = 0f;
+        currentInputDirection = Vector2.zero;
+
+        Vector2 currentPosition = rb != null ? rb.position : (Vector2)transform.position;
+        targetPosition = currentPosition;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+        }
+
+        if (hideHarpoonLine && lineRenderer != null)
+        {
+            lineRenderer.enabled = false;
+        }
+    }
+
     public void RecoverHarpoonFromEnemy(EnemyBase enemy)
     {
         if (harpoonedEnemy != enemy)
@@ -507,7 +730,34 @@ public class DigDugController : MonoBehaviour
         }
 
         harpoonedEnemy = null;
+        LinfoSoundPlayer.Play("LINFO_hook_retract", harpoonVolume * 0.75f);
         isAttacking = false;
+    }
+
+
+    private void SetupHoverLoop()
+    {
+        AudioClip hoverClip = LinfoSoundPlayer.LoadClip("LINFO_hover_loop");
+        if (hoverClip == null)
+        {
+            return;
+        }
+
+        if (hoverAudioSource == null)
+        {
+            hoverAudioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        hoverAudioSource.clip = hoverClip;
+        hoverAudioSource.loop = true;
+        hoverAudioSource.playOnAwake = false;
+        hoverAudioSource.spatialBlend = 0f;
+        hoverAudioSource.volume = hoverVolume;
+
+        if (!hoverAudioSource.isPlaying)
+        {
+            hoverAudioSource.Play();
+        }
     }
 
     private void FindReferencesIfMissing()

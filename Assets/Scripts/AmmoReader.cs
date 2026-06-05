@@ -35,6 +35,8 @@ public class AmmoReader : MonoBehaviour
 
         ammoText.text =
             $"Aguijones: {player.currentHarpoons}\n" +
+            $"Vidas: {manager.PlayerLives}/{manager.MaxPlayerLives}\n" +
+            $"Enemigos: {manager.DangerousCellCount}\n" +
             $"Senescentes: {manager.SenescentCount}\n" +
             $"Dormentes: {manager.DormantCount}\n" +
             $"Despiertas: {manager.AwakeCount}/{manager.MaxAwakeCellsBeforeDefeat}";

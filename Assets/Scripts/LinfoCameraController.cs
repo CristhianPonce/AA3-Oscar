@@ -37,6 +37,24 @@ public class LinfoCameraController : MonoBehaviour
 
     public bool BlocksPlayerInput => blockPlayerWhileMapViewIsActive && mapViewActive;
 
+    public static void ForceDisableMapView()
+    {
+        IsMapViewActive = false;
+
+        LinfoCameraController[] controllers = FindObjectsByType<LinfoCameraController>(FindObjectsSortMode.None);
+        foreach (LinfoCameraController controller in controllers)
+        {
+            if (controller == null)
+            {
+                continue;
+            }
+
+            controller.mapViewActive = false;
+            controller.followVelocity = Vector3.zero;
+            controller.zoomVelocity = 0f;
+        }
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void RegisterAutoSetup()
     {
@@ -100,6 +118,7 @@ public class LinfoCameraController : MonoBehaviour
         }
 
         SetMapViewActive(!mapViewActive);
+        LinfoSoundPlayer.Play(mapViewActive ? "LINFO_scan_ping" : "UI_select_blip", 0.75f);
     }
 
     private void SetMapViewActive(bool active)
